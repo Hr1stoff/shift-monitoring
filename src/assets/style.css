@@ -1,0 +1,9 @@
+body {
+    background-image: url('C:/Users/c1rmy/OneDrive/Desktop/Работа/shift-monitoring/src/assets/bg.jpg');
+    background-size: cover;
+}
+
+.container {
+    max-width: 1050px;
+    margin: 0 auto;
+}
