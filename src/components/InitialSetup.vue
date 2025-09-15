@@ -115,7 +115,7 @@ export default {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
       const der = bytes.buffer
 
-      return crypto.subtle.importKey(
+      return window.crypto.subtle.importKey(
         'spki',
         der,
         { name: 'RSA-OAEP', hash: 'SHA-256' },
@@ -127,10 +127,10 @@ export default {
     // ───── AES-GCM для localStorage ─────
     async deriveLocalKey() {
       const enc = new TextEncoder()
-      const baseKey = await crypto.subtle.importKey(
+      const baseKey = await  window.crypto.subtle.importKey(
         'raw', enc.encode(this.APP_SECRET), { name: 'PBKDF2' }, false, ['deriveKey']
       )
-      return crypto.subtle.deriveKey(
+      return window.crypto.subtle.deriveKey(
         { name: 'PBKDF2', salt: enc.encode('qr-landing-salt'), iterations: 200000, hash: 'SHA-256' },
         baseKey,
         { name: 'AES-GCM', length: 256 },
@@ -141,9 +141,9 @@ export default {
 
     async saveStoreIdEncrypted(storeId) {
       const key = await this.deriveLocalKey()
-      const iv = crypto.getRandomValues(new Uint8Array(12))
+      const iv = window.crypto.getRandomValues(new Uint8Array(12))
       const pt = new TextEncoder().encode(storeId)
-      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, pt)
+      const ct = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, pt)
       const payload = `${this.b64uEnc(iv)}.${this.b64uEnc(ct)}`
       localStorage.setItem('qr_store_id_enc', payload)
     },
@@ -154,7 +154,7 @@ export default {
       try {
         const [ivB64, ctB64] = payload.split('.')
         const key = await this.deriveLocalKey()
-        const pt = await crypto.subtle.decrypt(
+        const pt = await window.crypto.subtle.decrypt(
           { name: 'AES-GCM', iv: new Uint8Array(this.b64uDec(ivB64)) },
           key,
           this.b64uDec(ctB64)
@@ -167,12 +167,12 @@ export default {
 
     // ───── «JWE»-подобная упаковка полезной нагрузки ─────
     async jweEncrypt(publicKey, plaintextObj) {
-      const cek = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt'])
-      const iv = crypto.getRandomValues(new Uint8Array(12))
+      const cek = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt'])
+      const iv = window.crypto.getRandomValues(new Uint8Array(12))
       const plaintext = new TextEncoder().encode(JSON.stringify(plaintextObj))
-      const ciphertextBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cek, plaintext)
-      const cekRaw = await crypto.subtle.exportKey('raw', cek)
-      const encKeyBuf = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, cekRaw)
+      const ciphertextBuf = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cek, plaintext)
+      const cekRaw = await window.crypto.subtle.exportKey('raw', cek)
+      const encKeyBuf = await window.crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, cekRaw)
       const header = { alg: 'RSA-OAEP', enc: 'A256GCM', typ: 'JWE' }
       const compact = [
         this.b64uEnc(new TextEncoder().encode(JSON.stringify(header))),
@@ -199,7 +199,7 @@ export default {
           store_id: storeId,
           ts: now,
           exp: now + this.QR_TTL_SECONDS,
-          nonce: this.b64uEnc(crypto.getRandomValues(new Uint8Array(12))),
+          nonce: this.b64uEnc(window.crypto.getRandomValues(new Uint8Array(12))),
         }
 
         const compact = await this.jweEncrypt(this._rsaPubKey, payload)
