@@ -4,8 +4,17 @@
       <transition name="panel" mode="out-in">
         <!-- ФОРМА -->
         <form v-if="step === 'form' && !persisted" key="form" class="form__wrapper" @submit.prevent="onGenerate">
-          <input type="text" placeholder="Введите номер магазина (например: 1001)" class="form__input"
-            @keyup.enter="onGenerate" v-model="storeIdInput" />
+          <select v-model="storeIdInput" class="form__input form__input--select" @keyup.enter="onGenerate"
+            aria-label="Выберите магазин">
+            <option selected disabled value="">Выберете магазин</option>
+
+            <option v-for="store in stores" :key="store.ukm4store" :value="String(store.ukm4store)">
+              {{ store.name }}
+            </option>
+          </select>
+
+
+
           <input class="form__button" type="button" value="Сгенерировать QR" @click="onGenerate" />
         </form>
 
@@ -30,10 +39,17 @@
 </template>
 
 <script>
+
 import QRCode from 'qrcode'
 
 export default {
   name: 'QrLanding',
+  props: {
+    stores: {
+      type: Array,
+      require: true
+    }
+  },
   data() {
     // До первого рендера проверяем LS — это убирает «вспышку» формы
     let hasStore = false
@@ -53,6 +69,8 @@ export default {
       QR_TTL_SECONDS: 10,
     }
   },
+
+
 
   async mounted() {
     try {
@@ -78,7 +96,8 @@ export default {
       }
     } catch (e) {
       this.error = e?.message || 'Не удалось загрузить публичный ключ'
-    }
+    };
+
   },
 
   beforeUnmount() {
@@ -127,7 +146,7 @@ export default {
     // ───── AES-GCM для localStorage ─────
     async deriveLocalKey() {
       const enc = new TextEncoder()
-      const baseKey = await  window.crypto.subtle.importKey(
+      const baseKey = await window.crypto.subtle.importKey(
         'raw', enc.encode(this.APP_SECRET), { name: 'PBKDF2' }, false, ['deriveKey']
       )
       return window.crypto.subtle.deriveKey(
@@ -190,7 +209,7 @@ export default {
         this.error = ''
         if (!this._rsaPubKey) return
 
-        const storeId = (this.storeIdInput || '').trim()
+        const storeId = String(this.storeIdInput ?? '').trim()
         if (!storeId) return
 
         const now = Math.floor(Date.now() / 1000)
@@ -224,7 +243,7 @@ export default {
 
     // ───── UI ─────
     async onGenerate() {
-      const v = (this.storeIdInput || '').trim()
+      const v = String(this.storeIdInput ?? '').trim()
       if (!v) return
 
       // Сохраняем и БОЛЬШЕ не возвращаем форму
@@ -243,6 +262,8 @@ export default {
       this.qrDataUrl = ''
       this.step = 'form'
     },
+
+
   }
 }
 </script>
@@ -308,7 +329,7 @@ body {
   filter: blur(4px);
 }
 
-/* ===== ФОРМА ===== */
+/* ФОРМА */
 .form__wrapper {
   width: 870px;
   background-color: #fff;
@@ -348,6 +369,71 @@ body {
 .form__button:active {
   transform: translateY(1px);
 }
+
+.form__wrapper {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px;
+}
+
+.form__input.form__input--select,
+.form__input {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  touch-action: manipulation;
+
+
+  font-size: 22px;
+  line-height: 1.4;
+  min-height: 64px;
+  padding: 0 20px;
+  border-radius: 12px;
+  text-align: left;
+
+}
+
+.form__input:focus {
+  outline: 3px solid rgba(49, 110, 237, .35);
+  outline-offset: 2px;
+}
+
+.form__input--select option {
+  padding: .75em 1em;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+
+.form__button {
+  width: 100%;
+  height: 64px;
+  font-size: 22px;
+  border-radius: 12px;
+}
+
+
+.form__button:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+
+select {
+  -webkit-appearance: none;
+
+  background-image:
+    linear-gradient(transparent, transparent),
+
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23555' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 14px center, right 14px center;
+  background-size: 14px 8px, 14px 8px;
+  padding-right: 46px;
+
+}
+
+
+
 
 /* ===== QR ПАНЕЛЬ ===== */
 .qr__wrapper {
@@ -419,7 +505,7 @@ body {
   }
 }
 
-/* лёгкое «всплытие» QR-кода */
+/* всплытие QR-кода */
 .qr-pop-in {
   opacity: 0;
   transform: translateY(8px) scale(.98);
@@ -485,3 +571,11 @@ body {
   }
 }
 </style>
+
+
+<!-- <input type="text" placeholder="Введите номер магазина (например: 1001)" class="form__input"
+            @keyup.enter="onGenerate" v-model="storeIdInput" /> -->
+<!-- <select v-model="storeIdInput" class="form__input" @keyup.enter="onGenerate">
+            <option selected disabled>Выберете магазин</option>
+            <option v-for="store in stores" :value="store.ukm4store">{{ store.name }}</option>
+          </select> -->
