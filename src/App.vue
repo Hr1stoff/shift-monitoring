@@ -13,7 +13,7 @@
     <main class="content">
       <transition name="switch" mode="out-in">
         <Salutation v-if="salutation" key="salutation" />
-        <InitialSetup v-else key="setup" :stores="stores" />
+        <InitialSetup v-else key="setup" />
       </transition>
     </main>
 
@@ -53,7 +53,7 @@ export default {
     }
   },
   created() {
-    this.getStores()
+    this.getStores();
   },
   mounted() {
     setTimeout(() => { this.salutation = false }, 3000)
@@ -62,13 +62,35 @@ export default {
   methods: {
     async getStores() {
       try {
-        const response = await api.get("/api/stores");
+   
+        let cached = null;
+        try {
+          const raw = localStorage.getItem("stores");
+          if (raw) cached = JSON.parse(this.b64DecodeUnicode(raw));
+        } catch { cached = null }
 
-        this.stores = response.data.data;
+        if (cached) {
+          this.stores = cached.data;
+        }
+
+ 
+        const meta = await api.get("/api/stores/meta");
+        const updatedAt = meta.data.updated_at;
+
+
+        if (!cached || cached.updated_at !== updatedAt) {
+          const response = await api.get("/api/stores");
+          this.stores = response.data.data;
+          const payload = {
+            updated_at: updatedAt,
+            data: this.stores
+          };
+          localStorage.setItem("stores", this.b64EncodeUnicode(JSON.stringify(payload)));
+        }
+
       } catch (err) {
-        console.log(err);
+        console.log("Ошибка при загрузке магазинов:", err);
       }
-
     },
     openSettings() { this.isSettingsOpen = true; },
     closeSettings() { this.isSettingsOpen = false; },
@@ -79,6 +101,13 @@ export default {
       } catch (e) { /* no-op */ }
       window.location.reload();
     },
+    b64EncodeUnicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    },
+    b64DecodeUnicode(str) {
+      return decodeURIComponent(escape(atob(str)));
+    },
+
 
   }
 }
@@ -226,6 +255,7 @@ export default {
   line-height: 1;
   cursor: pointer;
 }
+
 .danger-chip {
   display: inline-block;
   padding: 15px 16px;

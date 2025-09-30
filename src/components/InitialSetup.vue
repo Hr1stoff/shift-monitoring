@@ -44,44 +44,46 @@ import QRCode from 'qrcode'
 
 export default {
   name: 'QrLanding',
-  props: {
-    stores: {
-      type: Array,
-      require: true
-    }
-  },
   data() {
-    // До первого рендера проверяем LS — это убирает «вспышку» формы
     let hasStore = false
     try { hasStore = !!localStorage.getItem('qr_store_id_enc') } catch { hasStore = false }
 
+    // читаем stores из localStorage
+    let stores = null
+    try {
+      const cached = localStorage.getItem("stores")
+      if (cached) {
+        // здесь обязательно нужно раскодировать base64 → JSON
+        stores = JSON.parse(decodeURIComponent(escape(atob(cached))))
+      }
+    } catch {
+      stores = null
+    }
+
     return {
       step: hasStore ? 'qr' : 'form',
-      persisted: hasStore,        // если true — форму больше не показываем
+      persisted: hasStore,
       storeIdInput: '',
       qrDataUrl: '',
       error: '',
       timer: null,
       _rsaPubKey: null,
+      stores, // тут уже готовое значение
 
-      // Константы
       APP_SECRET: 'qr-landing-app-secret-v1',
       QR_TTL_SECONDS: 10,
     }
   },
-
-
-
   async mounted() {
     try {
-      // 1) Загружаем публичный ключ для шифрования
+
       const pem = await fetch('/scanner_public.pem').then(r => {
         if (!r.ok) throw new Error('scanner_public.pem not found')
         return r.text()
       })
       this._rsaPubKey = await this.importRsaPublicKey(pem)
 
-      // 2) Если стартовали в режиме QR — подтверждаем восстановление и запускаем генерацию
+
       if (this.persisted) {
         const restored = await this.loadStoreIdEncrypted()
         if (restored) {
@@ -89,7 +91,7 @@ export default {
           await this.generateQrOnce()
           this.startTicker()
         } else {
-          // В LS что-то было, но расшифровать не вышло — возвращаем форму (редкий случай)
+
           this.persisted = false
           this.step = 'form'
         }
@@ -105,6 +107,12 @@ export default {
   },
 
   methods: {
+    b64EncodeUnicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    },
+    b64DecodeUnicode(str) {
+      return decodeURIComponent(escape(atob(str)));
+    },
     // ───── base64url ─────
     b64uEnc(buf) {
       let s = btoa(String.fromCharCode(...new Uint8Array(buf)))
