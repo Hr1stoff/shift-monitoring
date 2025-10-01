@@ -8,7 +8,7 @@
             aria-label="Выберите магазин">
             <option selected disabled value="">Выберете магазин</option>
 
-            <option v-for="store in stores" :key="store.ukm4store" :value="String(store.ukm4store)">
+            <option v-for="store in stores" :key="store.ukm4store" :value="String(store.smstore)">
               {{ store.name }}
             </option>
           </select>
