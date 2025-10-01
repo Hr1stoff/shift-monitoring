@@ -61,36 +61,30 @@ export default {
   components: { Salutation, InitialSetup },
   methods: {
     async getStores() {
-  try {
-    // 1) Пытаемся показать кеш сразу
-    let cached = null;
-    try {
-      const raw = localStorage.getItem("stores");
-      if (raw) cached = JSON.parse(this.b64DecodeUnicode(raw));
-    } catch { cached = null }
+      try {
+        // 1) показать кеш сразу (ожидаем структуру { data: [...] })
+        let cached = null;
+        try {
+          const raw = localStorage.getItem("stores");
+          if (raw) cached = JSON.parse(this.b64DecodeUnicode(raw));
+        } catch { cached = null }
 
-    if (cached && Array.isArray(cached.data)) {
-      this.stores = cached.data;
-    }
+        if (cached && Array.isArray(cached.data)) {
+          this.stores = cached.data;
+        }
 
-    // 2) Один запрос на сервер — актуальные данные
-    const res = await api.get("/api/stores");
-    const data = res?.data?.data ?? res?.data ?? [];
+        // 2) запрос на сервер
+        const res = await api.get("/api/stores");
+        const data = res?.data?.data ?? res?.data ?? [];
 
-    // 3) Обновляем состояние и кеш
-    this.stores = data;
-    const payload = {
-      // помечаем время обновления локально (т.к. /meta нет)
-      updated_at: Date.now(),
-      data
-    };
-    localStorage.setItem("stores", this.b64EncodeUnicode(JSON.stringify(payload)));
-  } catch (err) {
-    console.log("Ошибка при загрузке магазинов:", err);
-    // Если сети нет и кеша тоже нет — можно показать уведомление пользователю
-    // this.$toast?.error("Не удалось загрузить список магазинов");
-  }
-},
+        // 3) обновляем состояние и кеш (без updated_at)
+        this.stores = data;
+        const payload = { data };
+        localStorage.setItem("stores", this.b64EncodeUnicode(JSON.stringify(payload)));
+      } catch (err) {
+        console.log("Ошибка при загрузке магазинов:", err);
+      }
+    },
     openSettings() { this.isSettingsOpen = true; },
     closeSettings() { this.isSettingsOpen = false; },
 
