@@ -61,37 +61,36 @@ export default {
   components: { Salutation, InitialSetup },
   methods: {
     async getStores() {
-      try {
-   
-        let cached = null;
-        try {
-          const raw = localStorage.getItem("stores");
-          if (raw) cached = JSON.parse(this.b64DecodeUnicode(raw));
-        } catch { cached = null }
+  try {
+    // 1) Пытаемся показать кеш сразу
+    let cached = null;
+    try {
+      const raw = localStorage.getItem("stores");
+      if (raw) cached = JSON.parse(this.b64DecodeUnicode(raw));
+    } catch { cached = null }
 
-        if (cached) {
-          this.stores = cached.data;
-        }
+    if (cached && Array.isArray(cached.data)) {
+      this.stores = cached.data;
+    }
 
- 
-        const meta = await api.get("/api/stores/meta");
-        const updatedAt = meta.data.updated_at;
+    // 2) Один запрос на сервер — актуальные данные
+    const res = await api.get("/api/stores");
+    const data = res?.data?.data ?? res?.data ?? [];
 
-
-        if (!cached || cached.updated_at !== updatedAt) {
-          const response = await api.get("/api/stores");
-          this.stores = response.data.data;
-          const payload = {
-            updated_at: updatedAt,
-            data: this.stores
-          };
-          localStorage.setItem("stores", this.b64EncodeUnicode(JSON.stringify(payload)));
-        }
-
-      } catch (err) {
-        console.log("Ошибка при загрузке магазинов:", err);
-      }
-    },
+    // 3) Обновляем состояние и кеш
+    this.stores = data;
+    const payload = {
+      // помечаем время обновления локально (т.к. /meta нет)
+      updated_at: Date.now(),
+      data
+    };
+    localStorage.setItem("stores", this.b64EncodeUnicode(JSON.stringify(payload)));
+  } catch (err) {
+    console.log("Ошибка при загрузке магазинов:", err);
+    // Если сети нет и кеша тоже нет — можно показать уведомление пользователю
+    // this.$toast?.error("Не удалось загрузить список магазинов");
+  }
+},
     openSettings() { this.isSettingsOpen = true; },
     closeSettings() { this.isSettingsOpen = false; },
 
