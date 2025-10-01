@@ -53,9 +53,10 @@ export default {
     try {
       const cached = localStorage.getItem("stores")
       if (cached) {
-        // здесь обязательно нужно раскодировать base64 → JSON
-        stores = JSON.parse(decodeURIComponent(escape(atob(cached))))
+        const parsed = JSON.parse(decodeURIComponent(escape(atob(cached))))
+        stores = Array.isArray(parsed?.data) ? parsed.data : parsed
       }
+
     } catch {
       stores = null
     }
